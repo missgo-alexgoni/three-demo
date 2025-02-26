@@ -16,7 +16,7 @@ export default function ThreeComponent() {
 
   return (
     <>
-      <Canvas shadows>
+      <Canvas shadows camera={{ position: [0, 6, 22] }}>
         {/* Three.js 설정 컴포넌트 */}
         <SceneConfig />
 

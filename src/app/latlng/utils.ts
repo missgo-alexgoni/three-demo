@@ -17,21 +17,15 @@ export function getCenter(coords: number[][]) {
 
 // 상대 좌표 계산
 export function getRelativeCoords(coords: number[][], center: number[]) {
-  const SCALE_FACTOR = 100_000;
-
-  return coords.map(([lng, lat]) => [
-    (lng - center[0]) * SCALE_FACTOR,
-    (lat - center[1]) * SCALE_FACTOR,
-  ]);
+  return coords.map(([lng, lat]) => [lng - center[0], lat - center[1]]);
 }
 
 // 좌표계 변환
 export function latLngToXY(lng: number, lat: number): [number, number] {
-  const SCALE_FACTOR = 100_000;
   const wgs84 = "EPSG:4326"; // WGS84 좌표계
   // UTM 좌표계를 EPSG:32633으로 설정
-  const utm33n = "EPSG:32633";
-  const [x, y] = proj4(wgs84, utm33n, [lng, lat]);
+  const webMercator = "EPSG:3857";
+  const [x, y] = proj4(wgs84, webMercator, [lng, lat]);
 
-  return [x / SCALE_FACTOR, y / SCALE_FACTOR];
+  return [x, y];
 }

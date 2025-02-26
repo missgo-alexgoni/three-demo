@@ -35,10 +35,13 @@ export default function SceneConfig() {
         zoomSpeed={0.8}
         // minDistance={10}
         // maxDistance={30}
-        // target={[0, 3, 0]}
+        target={[0, 3, 0]}
         // minPolarAngle={THREE.MathUtils.degToRad(0)}
         // maxPolarAngle={THREE.MathUtils.degToRad(90)}
       />
+
+      <gridHelper />
+      <axesHelper scale={100} />
     </>
   );
 }
