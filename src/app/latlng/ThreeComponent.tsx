@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import data from "./data.json";
@@ -5,14 +6,25 @@ import data from "./data.json";
 import { getCenter, getRelativeCoords, latLngToXY } from "./utils";
 import SceneConfig from "./SceneConfig";
 
-const HEIGHT = 1.5;
-
 export default function ThreeComponent() {
-  const buildingData = data.buildings[0].geometry.coordinates[0][0].map(
-    ([lng, lat]) => latLngToXY(lng, lat)
+  let buildingLatLngData = data.buildPolygon.map((floor) => ({
+    ...floor,
+    coordinates: floor.coordinates.map(([lng, lat]) => latLngToXY(lng, lat)),
+  }));
+  const centerCoord = getCenter(buildingLatLngData[0].coordinates);
+  // @ts-ignore
+  buildingLatLngData = buildingLatLngData.map((floor) => ({
+    ...floor,
+    coordinates: getRelativeCoords(
+      floor.coordinates as [number, number][],
+      centerCoord
+    ),
+  }));
+
+  const landData = data.landPolygon.coordinates.map(([lng, lat]) =>
+    latLngToXY(lng, lat)
   );
-  // 건물 1층 기준 중심 좌표
-  const centerCoord = getCenter(buildingData);
+  const relativeLandCoord = getRelativeCoords(landData, centerCoord);
 
   return (
     <>
@@ -20,32 +32,32 @@ export default function ThreeComponent() {
         {/* Three.js 설정 컴포넌트 */}
         <SceneConfig />
 
+        {/* 바닥 */}
+        <mesh position={[0, -20, 0]} receiveShadow>
+          <boxGeometry args={[80, 40, 80]} />
+          <meshStandardMaterial color="#d6d6d6" toneMapped={false} />
+        </mesh>
+
         {/* 토지 컴포넌트 */}
-        <LandObject centerCoord={centerCoord} />
+        <LandObject coord={relativeLandCoord} />
         {/* 건물 컴포넌트 */}
-        <MainBuilding centerCoord={centerCoord} />
+        <MainBuilding data={buildingLatLngData} />
       </Canvas>
     </>
   );
 }
 
-function LandObject({ centerCoord }: { centerCoord: number[] }) {
-  const landData = data.land.geometry.coordinates[0][0].map(([lng, lat]) =>
-    latLngToXY(lng, lat)
-  );
-  // 중심 좌표 기준으로 모든 꼭짓점에 대해 상대 좌표 계산
-  const relativeCoord = getRelativeCoords(landData, centerCoord);
-
+function LandObject({ coord }: { coord: number[][] }) {
   // 좌표 기준 다각형 그리기
   const shape = new THREE.Shape();
-  shape.moveTo(relativeCoord[0][0], relativeCoord[0][1]);
-  for (let i = 1; i < relativeCoord.length; i++) {
-    shape.lineTo(relativeCoord[i][0], relativeCoord[i][1]);
+  shape.moveTo(coord[0][0], coord[0][1]);
+  for (let i = 1; i < coord.length; i++) {
+    shape.lineTo(coord[i][0], coord[i][1]);
   }
   shape.closePath();
 
   const extrudeSettings = {
-    depth: 40,
+    depth: 0.05,
     bevelEnabled: false,
   };
 
@@ -64,17 +76,35 @@ function LandObject({ centerCoord }: { centerCoord: number[] }) {
   );
 }
 
-const MainBuilding = ({ centerCoord }: { centerCoord: number[] }) => {
-  const buildingData = data.buildings[0].geometry.coordinates[0][0].map(
-    ([lng, lat]) => latLngToXY(lng, lat)
-  );
-  // 중심 좌표 기준으로 모든 꼭짓점에 대해 상대 좌표 계산
-  const relativeCoord = getRelativeCoords(buildingData, centerCoord);
+interface MainBuildingProps {
+  data: {
+    coordinates: [number, number][];
+    floor: number;
+    height: number;
+  }[];
+}
+
+const MainBuilding = ({ data }: MainBuildingProps) => {
+  let accumulatedHeight = 0;
 
   return (
     <>
-      {/* 각 층별 3D Object */}
-      <BuildingFloor coord={relativeCoord} height={0 * HEIGHT} />
+      {data.map((floor, idx) => {
+        if (idx !== 0) {
+          accumulatedHeight += data[idx - 1].height;
+        }
+
+        return (
+          <>
+            <BuildingFloor
+              coord={floor.coordinates}
+              height={floor.height}
+              opacity={idx === 0 ? 0.5 : 1}
+              floor={accumulatedHeight}
+            />
+          </>
+        );
+      })}
     </>
   );
 };
@@ -83,10 +113,12 @@ const BuildingFloor = ({
   coord,
   height,
   opacity = 1,
+  floor,
 }: {
   coord: number[][];
   height: number;
   opacity?: number;
+  floor: number;
 }) => {
   // 좌표 기준 다각형 그리기
   const shape = new THREE.Shape();
@@ -97,7 +129,7 @@ const BuildingFloor = ({
   shape.closePath();
 
   const extrudeSettings = {
-    depth: HEIGHT,
+    depth: height,
     bevelEnabled: false,
   };
 
@@ -105,7 +137,7 @@ const BuildingFloor = ({
     <>
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, height, 0]}
+        position={[0, floor, 0]}
         castShadow
         receiveShadow
       >
@@ -119,7 +151,7 @@ const BuildingFloor = ({
       </mesh>
 
       {/* 외곽선 */}
-      <lineSegments rotation={[-Math.PI / 2, 0, 0]} position={[0, height, 0]}>
+      <lineSegments rotation={[-Math.PI / 2, 0, 0]} position={[0, floor, 0]}>
         <edgesGeometry
           args={[new THREE.ExtrudeGeometry(shape, extrudeSettings)]}
         />
