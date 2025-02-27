@@ -65,12 +65,12 @@ function LandObject({ coord }: { coord: number[][] }) {
     <>
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -40, 0]}
+        position={[0, 0, 0]}
         castShadow
         receiveShadow
       >
         <extrudeGeometry args={[shape, extrudeSettings]} />
-        <meshStandardMaterial color="#CACACA" toneMapped={false} />
+        <meshStandardMaterial color="#818181" toneMapped={false} />
       </mesh>
     </>
   );
